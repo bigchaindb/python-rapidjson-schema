@@ -13,22 +13,33 @@ static PyObject *
 schema_validate(SchemaObject* self, PyObject *args)
 {
     char* json;
+    int accept;
     rapidjson::Document d;
 
 	if (!PyArg_ParseTuple(args, "s", &json)) return NULL;
 
-    if (d.Parse(json).HasParseError()) {
+    Py_BEGIN_ALLOW_THREADS;
+    accept = !d.Parse(json).HasParseError();
+    Py_END_ALLOW_THREADS;
+
+    if (!accept) {
         PyErr_SetString(PyExc_ValueError, "Invalid JSON");
         return NULL;
     }
 
     rapidjson::SchemaValidator validator(*self->document);
 
-    if (!d.Accept(validator)) {
+    Py_BEGIN_ALLOW_THREADS;
+    accept = d.Accept(validator);
+    Py_END_ALLOW_THREADS;
+
+    if (!accept) {
         rapidjson::StringBuffer sb;
         rapidjson::StringBuffer sb2;
+        Py_BEGIN_ALLOW_THREADS;
         validator.GetInvalidSchemaPointer().StringifyUriFragment(sb);
         validator.GetInvalidDocumentPointer().StringifyUriFragment(sb2);
+        Py_END_ALLOW_THREADS;
         PyErr_SetObject(PyExc_ValueError,
                 Py_BuildValue("sss", 
                     validator.GetInvalidSchemaKeyword(),
@@ -91,17 +102,14 @@ schema_loads(PyObject *self, PyObject *args)
         return NULL;
     }
     
-    rapidjson::SchemaDocument *sd = new rapidjson::SchemaDocument(d);
-    
     SchemaObject *obj = PyObject_New(SchemaObject, &SchemaType); 
-    obj->document = sd;
+    obj->document = new rapidjson::SchemaDocument(d);
     return (PyObject*) obj;
 }
 
 static PyMethodDef
 schema_functions[] = {
-    {"loads", (PyCFunction) schema_loads, METH_VARARGS,
-     "Load a schema"},
+    {"loads", (PyCFunction) schema_loads, METH_VARARGS, "Load a schema"},
     {NULL, NULL, 0, NULL}
 };
 

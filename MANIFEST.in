@@ -1,0 +1,9 @@
+include .dir-locals.el
+include LICENSES.md MANIFEST.in *.cfg *.ini *.py *.md *.txt
+include python-rapidjson/*.cpp python-rapidjson/*.h
+
+exclude .gitmodules
+
+prune rapidjson
+include rapidjson/readme.md rapidjson/license.txt
+recursive-include rapidjson/include *.h
